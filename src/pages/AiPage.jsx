@@ -356,7 +356,7 @@ export default function AiPage() {
       if (!backend) return
       try {
         const res = await fetch(`${backend.url}${data.toggleEndpoint || '/api/ai'}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
         })
         if (!res.ok) return
         const json = await res.json()

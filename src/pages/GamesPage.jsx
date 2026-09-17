@@ -145,10 +145,10 @@ export default function GamesPage() {
     finally { setDeleting(null) }
   }
 
-  const filtered = games.filter(g =>
+  const filtered = games.filter(g => g.status === 'active' && (
     g.name?.toLowerCase().includes(search.toLowerCase()) ||
     g.description?.toLowerCase().includes(search.toLowerCase())
-  )
+  ))
 
   const formProps = {
     form, setForm, saving, nameRef, urlRef, interactedRef,
@@ -194,7 +194,7 @@ export default function GamesPage() {
           <div className="col-span-full">
             <EmptyState
               icon="🎮"
-              title={search ? 'No games match your search' : 'No games yet'}
+              title={search ? 'No active games match your search' : 'No active games yet'}
               action={!search && <Button onClick={() => { resetForm(); setAddOpen(true) }}>+ Add First Game</Button>}
             />
           </div>

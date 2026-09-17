@@ -34,7 +34,7 @@ function GameForm({ form, setForm, saving, isEdit, onSubmit, onCancel, nameRef, 
         />
       </div>
       <div>
-        <label className="block text-ink-faint text-xs mb-1.5 uppercase tracking-wide font-medium">Game URL *</label>
+        <label className="block text-ink-faint text-xs mb-1.5 uppercase tracking-wide font-medium">Frontend URL *</label>
         <Input
           ref={urlRef}
           placeholder="https://game.example.com"

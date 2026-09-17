@@ -6,7 +6,7 @@ import Spinner from '../components/Spinner'
 import { Button, Card, PageHeader, EmptyState } from '../components/ui'
 import { Input } from '../components/ui/Input'
 
-const EMPTY_FORM = { name: '', game_url: '', mini_app_url: '' }
+const EMPTY_FORM = { name: '', game_url: '', mini_app_url: '', backend_url: '' }
 
 function isValidUrl(str) {
   try {
@@ -61,6 +61,17 @@ function GameForm({ form, setForm, saving, isEdit, onSubmit, onCancel, nameRef, 
           autoComplete="off"
         />
       </div>
+      <div>
+        <label className="block text-ink-faint text-xs mb-1.5 uppercase tracking-wide font-medium">Backend URL *</label>
+        <Input
+          placeholder="https://your-game-backend.onrender.com"
+          value={form.backend_url}
+          onChange={e => { interactedRef.current = true; setForm(p => ({ ...p, backend_url: e.target.value })) }}
+          onFocus={() => { interactedRef.current = true }}
+          autoComplete="off"
+        />
+        <p className="text-ink-faint text-xs mt-1">Used by the game token and game API integration.</p>
+      </div>
       <div className="flex gap-2 pt-1">
         <Button type="submit" loading={saving} className="flex-1">{isEdit ? 'Save Changes' : 'Add Game'}</Button>
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
@@ -105,9 +116,10 @@ export default function GamesPage() {
     if (!form.name.trim()) return toast.error('Game name is required')
     if (!isValidUrl(form.game_url.trim())) return toast.error('Enter a valid URL (http/https)')
     if (form.mini_app_url.trim() && !isValidUrl(form.mini_app_url.trim())) return toast.error('Enter a valid Mini App URL (http/https)')
+    if (!isValidUrl(form.backend_url.trim())) return toast.error('Enter a valid backend URL (http/https)')
     setSaving(true)
     try {
-      await addGame({ name: form.name.trim(), game_url: form.game_url.trim(), mini_app_url: form.mini_app_url.trim() || null })
+      await addGame({ name: form.name.trim(), game_url: form.game_url.trim(), mini_app_url: form.mini_app_url.trim() || null, backend_url: form.backend_url.trim() })
       setAddOpen(false); resetForm()
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to add game') }
     finally { setSaving(false) }
@@ -117,9 +129,10 @@ export default function GamesPage() {
     if (!form.name.trim()) return toast.error('Game name is required')
     if (!isValidUrl(form.game_url.trim())) return toast.error('Enter a valid URL (http/https)')
     if (form.mini_app_url.trim() && !isValidUrl(form.mini_app_url.trim())) return toast.error('Enter a valid Mini App URL (http/https)')
+    if (!isValidUrl(form.backend_url.trim())) return toast.error('Enter a valid backend URL (http/https)')
     setSaving(true)
     try {
-      await updateGame(editGame.id, { name: form.name.trim(), game_url: form.game_url.trim(), mini_app_url: form.mini_app_url.trim() || null, status: editGame.status || 'active' })
+      await updateGame(editGame.id, { name: form.name.trim(), game_url: form.game_url.trim(), mini_app_url: form.mini_app_url.trim() || null, backend_url: form.backend_url.trim(), status: editGame.status || 'active' })
       setEditOpen(false); resetForm()
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to update') }
     finally { setSaving(false) }
@@ -208,6 +221,14 @@ export default function GamesPage() {
                     </a>
                   ) : <span className="text-ink-faint text-xs">—</span>}
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-cyan-400 text-xs">API</span>
+                  {game.backend_url ? (
+                    <a href={game.backend_url} target="_blank" rel="noreferrer" className="text-cyan-300 hover:text-cyan-200 text-xs font-mono truncate">
+                      {game.backend_url.replace(/^https?:\/\//, '')}
+                    </a>
+                  ) : <span className="text-red-400 text-xs">No backend URL</span>}
+                </div>
                 {!game.mini_app_url && !game.game_url && (
                   <span className="text-red-400 text-xs">⚠ No launch URL set — won't show in bot</span>
                 )}
@@ -218,7 +239,7 @@ export default function GamesPage() {
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2">
-                <Button variant="success" size="sm" onClick={() => { setEditGame(game); setForm({ name: game.name || '', game_url: game.game_url || '', mini_app_url: game.mini_app_url || '' }); setEditOpen(true) }}>
+                <Button variant="success" size="sm" onClick={() => { setEditGame(game); setForm({ name: game.name || '', game_url: game.game_url || '', mini_app_url: game.mini_app_url || '', backend_url: game.backend_url || '' }); setEditOpen(true) }}>
                   Edit
                 </Button>
                 <Button variant="danger" size="sm" loading={deleting === game.id} onClick={() => handleDelete(game.id)}>

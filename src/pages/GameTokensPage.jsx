@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useToast } from '../context/ToastContext'
 import { useGameTokens } from '../hooks/useGameTokens'
+import { getBackendByKey } from '../config/gameBackends'
 import Modal from '../components/Modal'
 import Spinner from '../components/Spinner'
 import { Button, Card, PageHeader, EmptyState, StatCard } from '../components/ui'
@@ -11,6 +12,16 @@ const fmt = (d) => {
   if (!d) return '—'
   const dt = new Date(d)
   return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const detectBackendUrl = (game) => {
+  const name = (game?.name || '').toLowerCase()
+  const key = name.includes('bingo') ? 'bingo'
+    : name.includes('dama') ? 'dama'
+      : name.includes('ludo') ? 'ludo'
+        : name.includes('tic') || name.includes('xo') ? 'xo'
+          : null
+  return game?.backend_url || (key ? getBackendByKey(key)?.url : '') || ''
 }
 
 export default function GameTokensPage() {
@@ -25,7 +36,6 @@ export default function GameTokensPage() {
   // Generate modal state
   const [genOpen, setGenOpen]           = useState(false)
   const [genGameId, setGenGameId]       = useState('')
-  const [genToken, setGenToken]         = useState('')
   const [genBackendUrl, setGenBackendUrl] = useState('')
 
   // Edit modal state
@@ -41,13 +51,25 @@ export default function GameTokensPage() {
     })
   }
 
+  const openGenerate = (game = null) => {
+    setGenGameId(game ? String(game.id) : '')
+    setGenBackendUrl(game ? detectBackendUrl(game) : '')
+    setGenOpen(true)
+  }
+
+  const selectGenerateGame = (value) => {
+    setGenGameId(value)
+    const game = games.find(item => String(item.id) === String(value))
+    setGenBackendUrl(detectBackendUrl(game))
+  }
+
   const handleGenerate = async () => {
     if (!genGameId)            return toast.error('Select a game')
     if (!genBackendUrl.trim()) return toast.error('Backend URL is required')
     setSaving(true)
     try {
-      await generateToken({ game_id: genGameId, token: genToken.trim() || undefined, backend_url: genBackendUrl.trim() })
-      setGenOpen(false); setGenGameId(''); setGenToken(''); setGenBackendUrl('')
+      await generateToken({ game_id: genGameId, backend_url: genBackendUrl.trim() })
+      setGenOpen(false); setGenGameId(''); setGenBackendUrl('')
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to generate') }
     finally { setSaving(false) }
   }
@@ -72,6 +94,16 @@ export default function GameTokensPage() {
     finally { setDeleting(null) }
   }
 
+  const autoGenerate = async (game) => {
+    const backendUrl = detectBackendUrl(game)
+    if (!backendUrl) return toast.error(`No backend URL detected for ${game.name}`)
+    setSaving(true)
+    try {
+      await generateToken({ game_id: game.id, backend_url: backendUrl })
+    } catch (err) { toast.error(err.response?.data?.error || `Failed to generate ${game.name} token`) }
+    finally { setSaving(false) }
+  }
+
   const filtered = tokens.filter(t => {
     if (filterGame !== 'all' && String(t.game_id) !== filterGame) return false
     if (search) {
@@ -79,6 +111,13 @@ export default function GameTokensPage() {
       return t.token?.toLowerCase().includes(q) || t.game_name?.toLowerCase().includes(q) || t.label?.toLowerCase().includes(q)
     }
     return true
+  })
+
+  const visibleGames = games.filter(g => {
+    if (filterGame !== 'all' && String(g.id) !== filterGame) return false
+    if (!search) return true
+    const q = search.toLowerCase()
+    return g.name?.toLowerCase().includes(q) || g.description?.toLowerCase().includes(q)
   })
 
   const counts = {
@@ -93,7 +132,7 @@ export default function GameTokensPage() {
         title="Game Tokens"
         subtitle="Generate and manage access tokens for each game"
         action={
-          <Button onClick={() => { setGenGameId(''); setGenBackendUrl(''); setGenOpen(true) }}>
+          <Button onClick={() => openGenerate()}>
             ⚡ Generate Token
           </Button>
         }
@@ -122,13 +161,38 @@ export default function GameTokensPage() {
 
       {/* Table */}
       <Card noPad className="overflow-hidden flex flex-col">
+        <div className="px-4 py-3 border-b border-surface-border">
+          <h2 className="text-ink font-semibold text-sm">Games and Token Coverage</h2>
+          <p className="text-ink-faint text-xs mt-1">Every active database game can generate its launch token automatically.</p>
+        </div>
+        {loading ? <div className="flex items-center justify-center py-10"><Spinner /></div> : (
+          <DataTable>
+            <THead><TR><TH>Game</TH><TH>Detected Backend</TH><TH>Token</TH><TH>Status</TH><TH right>Action</TH></TR></THead>
+            <TBody>
+              {visibleGames.map(game => {
+                const gameToken = tokens.find(t => String(t.game_id) === String(game.id) && t.status === 'active')
+                const backendUrl = detectBackendUrl(game)
+                return <TR key={game.id}>
+                  <TD><span className="text-ink text-sm font-medium">🎮 {game.name}</span><span className="block text-ink-faint text-xs">ID #{game.id}</span></TD>
+                  <TD>{backendUrl ? <span className="text-cyan-400 text-xs font-mono">{backendUrl.replace(/^https?:\/\//, '')}</span> : <span className="text-red-400 text-xs">Not detected</span>}</TD>
+                  <TD>{gameToken ? <code className="text-brand-300 text-xs font-mono">{gameToken.token}</code> : <span className="text-amber-400 text-xs">Not generated</span>}</TD>
+                  <TD><span className={game.status === 'active' && gameToken ? 'badge-active' : 'badge-inactive'}>{game.status === 'active' && gameToken ? 'Ready' : game.status === 'active' ? 'Needs token' : 'Inactive'}</span></TD>
+                  <TD right><Button size="sm" loading={saving} disabled={game.status !== 'active' || Boolean(gameToken) || !backendUrl} onClick={() => autoGenerate(game)}>⚡ Auto Generate</Button></TD>
+                </TR>
+              })}
+            </TBody>
+          </DataTable>
+        )}
+      </Card>
+
+      <Card noPad className="overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : filtered.length === 0 ? (
           <EmptyState
             icon="🔑"
             title={search || filterGame !== 'all' ? 'No tokens match your filter' : 'No tokens yet'}
-            action={<Button onClick={() => setGenOpen(true)}>⚡ Generate First Token</Button>}
+            action={<Button onClick={() => openGenerate()}>⚡ Generate First Token</Button>}
           />
         ) : (
           <DataTable>
@@ -193,7 +257,7 @@ export default function GameTokensPage() {
         <div className="flex flex-col gap-4">
           <div>
             <label className="block text-ink-faint text-xs mb-1.5 uppercase tracking-wide font-medium">Select Game *</label>
-            <Select className="w-full" value={genGameId} onChange={e => setGenGameId(e.target.value)}>
+            <Select className="w-full" value={genGameId} onChange={e => selectGenerateGame(e.target.value)}>
               <option value="">— Choose a game —</option>
               {games.map(g => <option key={g.id} value={g.id}>{g.name}{g.status !== 'active' ? ' (inactive)' : ''}</option>)}
             </Select>
@@ -210,14 +274,9 @@ export default function GameTokensPage() {
           )}
 
           <div>
-            <label className="block text-ink-faint text-xs mb-1.5 uppercase tracking-wide font-medium">Token Value</label>
-            <Input className="font-mono text-xs" placeholder="Leave empty to auto-generate" value={genToken} onChange={e => setGenToken(e.target.value)} />
-            <p className="text-ink-faint text-xs mt-1">Leave empty to auto-generate a secure token</p>
-          </div>
-          <div>
-            <label className="block text-ink-faint text-xs mb-1.5 uppercase tracking-wide font-medium">Backend URL *</label>
+            <label className="block text-ink-faint text-xs mb-1.5 uppercase tracking-wide font-medium">Detected Backend URL *</label>
             <Input placeholder="https://your-backend.com" value={genBackendUrl} onChange={e => setGenBackendUrl(e.target.value)} />
-            <p className="text-ink-faint text-xs mt-1">API URL the game calls for balance management</p>
+            <p className="text-ink-faint text-xs mt-1">Detected from the selected game and editable when needed.</p>
           </div>
           <div className="flex gap-2 pt-1">
             <Button loading={saving} disabled={!genGameId} className="flex-1" onClick={handleGenerate}>⚡ Generate</Button>

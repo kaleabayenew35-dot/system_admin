@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+const BASE = import.meta.env.VITE_BACKEND_URL || 'https://system-backend-1u5m.onrender.com'
 
 export const api = (token) => axios.create({
   baseURL: BASE,

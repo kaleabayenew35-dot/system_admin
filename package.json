@@ -1,0 +1,28 @@
+{
+  "name": "tg-games-admin",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node ./node_modules/vite/bin/vite.js",
+    "build": "node ./node_modules/vite/bin/vite.js build",
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
+    "start": "npx serve -s dist -l 3000"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
+    "axios": "^1.4.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-router-dom": "6.20.1",
+    "recharts": "^2.12.7",
+    "serve": "^14.2.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "5.0.0",
+    "autoprefixer": "^10.5.2",
+    "postcss": "^8.5.16",
+    "tailwindcss": "^4.3.2",
+    "vite": "5.0.7"
+  }
+}

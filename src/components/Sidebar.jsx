@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/dashboard',       label: 'Dashboard',       icon: '⬡' },
   { to: '/system-overview',  label: 'System Overview', icon: '🧩' },
   { to: '/game-modules',     label: 'Game Modules',    icon: '🎯' },
+  { to: '/ai',               label: 'AI Management',   icon: '🤖' },
   { to: '/games',           label: 'Games',           icon: '🎮' },
   { to: '/game-tokens',     label: 'Game Tokens',     icon: '🔑' },
   { to: '/users',           label: 'Users',           icon: '👥' },

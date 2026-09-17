@@ -16,6 +16,7 @@ import BingoModulePage from './BingoModulePage'
 import DamaModulePage from './DamaModulePage'
 import XoModulePage from './XoModulePage'
 import LudoModulePage from './LudoModulePage'
+import AiPage from './AiPage'
 
 // Map route path segment → human-readable label
 const PAGE_LABELS = {
@@ -26,6 +27,7 @@ const PAGE_LABELS = {
   'dama-module':     'Dama Module',
   'xo-module':       'XO Module',
   'ludo-module':     'Ludo Module',
+  'ai':             'AI Management',
   games:            'Games',
   'game-tokens':    'Game Tokens',
   users:            'Users',
@@ -79,6 +81,7 @@ export default function Dashboard() {
               <Route path="dama-module"     element={<DamaModulePage />} />
               <Route path="xo-module"       element={<XoModulePage />} />
               <Route path="ludo-module"     element={<LudoModulePage />} />
+              <Route path="ai"              element={<AiPage />} />
               <Route path="games"           element={<GamesPage />} />
               <Route path="game-tokens"     element={<GameTokensPage />} />
               <Route path="users"           element={<UsersPage />} />

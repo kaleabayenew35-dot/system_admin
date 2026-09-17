@@ -57,7 +57,8 @@ const GAME_DATA = {
   },
   xo: {
     description: 'Tic-Tac-Toe — minimax-based AI opponent with perfect play at max depth.',
-    apiKey: null,
+    apiKey: 'xo',
+    toggleEndpoint: '/api/ai/config',
     stats: [
       { label: 'AI Strategy',    value: 'Minimax', icon: '✕',  color: 'text-sky-400'     },
       { label: 'Win Rate vs AI', value: '—',       icon: '📊', color: 'text-violet-400'  },
@@ -77,7 +78,8 @@ const GAME_DATA = {
   },
   ludo: {
     description: 'Ludo engine — dice-driven AI with strategic piece selection and blocking heuristics.',
-    apiKey: null,
+    apiKey: 'ludo',
+    toggleEndpoint: '/api/ai/config',
     stats: [
       { label: 'AI Players',    value: '4',          icon: '🎲', color: 'text-emerald-400' },
       { label: 'Strategy Mode', value: 'Heuristic',  icon: '🧠', color: 'text-violet-400'  },
@@ -337,7 +339,7 @@ export default function AiPage() {
   const [activeTab, setActiveTab]   = useState('dama')
 
   // Per-game enabled state — dama starts null (loading from API)
-  const [aiEnabled, setAiEnabled]   = useState({ dama: null, bingo: true, xo: true, ludo: true })
+  const [aiEnabled, setAiEnabled]   = useState({ dama: null, bingo: true, xo: null, ludo: null })
   const [toggleLoading, setToggleLoading] = useState({ dama: false, bingo: false, xo: false, ludo: false })
 
   // Toast
@@ -347,27 +349,27 @@ export default function AiPage() {
     setTimeout(() => setToast({ msg: '', type: 'success' }), 3000)
   }
 
-  // ── Fetch real dama AI config on mount ────────────────────────────────
-  const fetchDamaConfig = useCallback(async () => {
-    const backend = getBackendByKey('dama')
-    if (!backend) return
-    try {
-      const res = await fetch(`${backend.url}/api/ai`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) return
-      const json = await res.json()
-      const cfg  = json?.data ?? json
-      // ai_enabled is 1/0 integer from DB — treat undefined as true (default on)
-      const enabled = cfg?.ai_enabled !== undefined ? Boolean(cfg.ai_enabled) : true
-      setAiEnabled(prev => ({ ...prev, dama: enabled }))
-    } catch {
-      // backend unreachable — default to true so UI isn't stuck
-      setAiEnabled(prev => ({ ...prev, dama: true }))
-    }
+  const fetchConfigs = useCallback(async () => {
+    await Promise.all(['dama', 'xo', 'ludo'].map(async (gameKey) => {
+      const data = GAME_DATA[gameKey]
+      const backend = getBackendByKey(data.apiKey)
+      if (!backend) return
+      try {
+        const res = await fetch(`${backend.url}${data.toggleEndpoint || '/api/ai'}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        const cfg = json?.data ?? json
+        const enabled = cfg?.ai_enabled !== undefined ? Boolean(cfg.ai_enabled) : true
+        setAiEnabled(prev => ({ ...prev, [gameKey]: enabled }))
+      } catch {
+        setAiEnabled(prev => ({ ...prev, [gameKey]: false }))
+      }
+    }))
   }, [token])
 
-  useEffect(() => { fetchDamaConfig() }, [fetchDamaConfig])
+  useEffect(() => { fetchConfigs() }, [fetchConfigs])
 
   // ── Toggle handler ─────────────────────────────────────────────────────
   const handleToggle = async (gameKey, newValue) => {
@@ -383,7 +385,7 @@ export default function AiPage() {
       return
     }
 
-    // Dama — real API call
+    // Persist the setting in the owning game backend.
     const backend = getBackendByKey(data.apiKey)
     if (!backend) return
 
@@ -409,7 +411,7 @@ export default function AiPage() {
 
       setAiEnabled(prev => ({ ...prev, [gameKey]: saved }))
       showToast(
-        `Dama AI play ${saved ? 'enabled' : 'disabled'} successfully`,
+        `${GAME_TABS.find(t => t.key === gameKey)?.label} AI play ${saved ? 'enabled' : 'disabled'} successfully`,
         'success'
       )
     } catch (err) {

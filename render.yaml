@@ -25,5 +25,3 @@ services:
         value: https://tic-tak-backend.onrender.com
       - key: VITE_LUDO_BACKEND_URL
         value: https://ludo-backend-g2ir.onrender.com
-      - key: VITE_DAMA_ADMIN_TOKEN
-        sync: false

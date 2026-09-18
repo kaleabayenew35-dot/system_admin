@@ -349,15 +349,19 @@ export default function AiPage() {
     setTimeout(() => setToast({ msg: '', type: 'success' }), 3000)
   }
 
+  const systemBackendUrl = getBackendByKey('system')?.url || 'https://system-backend-1u5m.onrender.com'
+
   const fetchConfigs = useCallback(async () => {
     await Promise.all(['dama', 'xo', 'ludo'].map(async (gameKey) => {
-      const data = GAME_DATA[gameKey]
-      const backend = getBackendByKey(data.apiKey)
-      if (!backend) return
       try {
-        const res = await fetch(`${backend.url}${data.toggleEndpoint || '/api/ai'}`, {
-          cache: 'no-store',
-        })
+        // All AI config reads go through system_backend proxy
+        const res = await fetch(
+          `${systemBackendUrl}/api/admin/games/ai-config/${gameKey}`,
+          {
+            cache: 'no-store',
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        )
         if (!res.ok) return
         const json = await res.json()
         const cfg = json?.data ?? json
@@ -367,7 +371,7 @@ export default function AiPage() {
         setAiEnabled(prev => ({ ...prev, [gameKey]: false }))
       }
     }))
-  }, [token])
+  }, [token, systemBackendUrl])
 
   useEffect(() => { fetchConfigs() }, [fetchConfigs])
 
@@ -385,29 +389,25 @@ export default function AiPage() {
       return
     }
 
-    const backend = getBackendByKey(data.apiKey)
-    if (!backend) return
-
     setToggleLoading(prev => ({ ...prev, [gameKey]: true }))
     try {
-      // Build auth headers — dama uses X-Admin-Token, others use Bearer JWT
-      const headers = { 'Content-Type': 'application/json' }
-      if (gameKey === 'dama') {
-        const damaAdminToken = import.meta.env.VITE_DAMA_ADMIN_TOKEN
-        if (damaAdminToken) headers['X-Admin-Token'] = damaAdminToken
-      } else {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const res = await fetch(`${backend.url}${data.toggleEndpoint}`, {
-        method:  'PUT',
-        headers,
-        body: JSON.stringify({ aiEnabled: newValue }),
-      })
+      // All AI config writes go through system_backend proxy — no game-backend
+      // tokens needed on the frontend side, system_backend holds the secrets.
+      const res = await fetch(
+        `${systemBackendUrl}/api/admin/games/ai-config/${gameKey}`,
+        {
+          method:  'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization:  `Bearer ${token}`,
+          },
+          body: JSON.stringify({ aiEnabled: newValue }),
+        }
+      )
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.error || `HTTP ${res.status}`)
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson?.error || `HTTP ${res.status}`)
       }
 
       const json = await res.json()

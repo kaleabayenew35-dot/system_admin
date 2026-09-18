@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: system-admin
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_BACKEND_URL
+        value: https://system-backend-1u5m.onrender.com
+      - key: VITE_SYSTEM_BACKEND_URL
+        value: https://system-backend-1u5m.onrender.com
+      - key: VITE_BINGO_BACKEND_URL
+        value: https://bingo-i1br.onrender.com
+      - key: VITE_DAMA_BACKEND_URL
+        value: https://dama-backend.onrender.com
+      - key: VITE_XO_BACKEND_URL
+        value: https://tic-tak-backend.onrender.com
+      - key: VITE_LUDO_BACKEND_URL
+        value: https://ludo-backend-g2ir.onrender.com
+      - key: VITE_DAMA_ADMIN_TOKEN
+        sync: false

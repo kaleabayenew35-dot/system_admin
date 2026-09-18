@@ -385,18 +385,23 @@ export default function AiPage() {
       return
     }
 
-    // Persist the setting in the owning game backend.
     const backend = getBackendByKey(data.apiKey)
     if (!backend) return
 
     setToggleLoading(prev => ({ ...prev, [gameKey]: true }))
     try {
+      // Build auth headers — dama uses X-Admin-Token, others use Bearer JWT
+      const headers = { 'Content-Type': 'application/json' }
+      if (gameKey === 'dama') {
+        const damaAdminToken = import.meta.env.VITE_DAMA_ADMIN_TOKEN
+        if (damaAdminToken) headers['X-Admin-Token'] = damaAdminToken
+      } else {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const res = await fetch(`${backend.url}${data.toggleEndpoint}`, {
         method:  'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization:  `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({ aiEnabled: newValue }),
       })
 

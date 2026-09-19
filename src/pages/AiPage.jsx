@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, PageHeader } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { getBackendByKey } from '../config/gameBackends'
+import { api } from '../hooks/useApi'
 
 // ── Game tab definitions ───────────────────────────────────────────────────
 const GAME_TABS = [
@@ -359,23 +360,24 @@ export default function AiPage() {
     navigate('/', { replace: true })
   }, [logout, navigate])
 
+  const requireAdminToken = useCallback(() => {
+    if (token) return true
+    handleUnauthorized()
+    return false
+  }, [token, handleUnauthorized])
+
   const fetchConfigs = useCallback(async () => {
+    if (!requireAdminToken()) return
     await Promise.all(['dama', 'xo', 'ludo'].map(async (gameKey) => {
       try {
         // All AI config reads go through system_backend proxy
-        const res = await fetch(
-          `${systemBackendUrl}/api/admin/games/ai-config/${gameKey}`,
-          {
-            cache: 'no-store',
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        )
+        const res = await api(token).get(`/api/admin/games/ai-config/${gameKey}`, { params: { _t: Date.now() } })
         if (res.status === 401) {
           handleUnauthorized()
           return
         }
-        if (!res.ok) return
-        const json = await res.json()
+        if (res.status < 200 || res.status >= 300) return
+        const json = res.data
         const cfg = json?.data ?? json
         const enabled = cfg?.ai_enabled !== undefined ? Boolean(cfg.ai_enabled) : true
         setAiEnabled(prev => ({ ...prev, [gameKey]: enabled }))
@@ -383,7 +385,7 @@ export default function AiPage() {
         setAiEnabled(prev => ({ ...prev, [gameKey]: false }))
       }
     }))
-  }, [token, systemBackendUrl, handleUnauthorized])
+  }, [token, systemBackendUrl, handleUnauthorized, requireAdminToken])
 
   useEffect(() => { fetchConfigs() }, [fetchConfigs])
 
@@ -403,30 +405,20 @@ export default function AiPage() {
 
     setToggleLoading(prev => ({ ...prev, [gameKey]: true }))
     try {
+      if (!requireAdminToken()) return
       // All AI config writes go through system_backend proxy — no game-backend
       // tokens needed on the frontend side, system_backend holds the secrets.
-      const res = await fetch(
-        `${systemBackendUrl}/api/admin/games/ai-config/${gameKey}`,
-        {
-          method:  'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization:  `Bearer ${token}`,
-          },
-          body: JSON.stringify({ aiEnabled: newValue }),
-        }
+      const res = await api(token).put(
+        `/api/admin/games/ai-config/${gameKey}`,
+        { aiEnabled: newValue },
       )
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          handleUnauthorized()
-          return
-        }
-        const errJson = await res.json().catch(() => ({}))
-        throw new Error(errJson?.error || `HTTP ${res.status}`)
+      if (res.status === 401) {
+        handleUnauthorized()
+        return
       }
 
-      const json = await res.json()
+      const json = res.data
       const cfg  = json?.data ?? json
       const saved = cfg?.ai_enabled !== undefined ? Boolean(cfg.ai_enabled) : newValue
 
@@ -436,6 +428,10 @@ export default function AiPage() {
         'success'
       )
     } catch (err) {
+      if (err.response?.status === 401) {
+        handleUnauthorized()
+        return
+      }
       showToast(`Failed to update: ${err.message}`, 'error')
     } finally {
       setToggleLoading(prev => ({ ...prev, [gameKey]: false }))

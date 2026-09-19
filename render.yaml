@@ -24,4 +24,4 @@ services:
       - key: VITE_XO_BACKEND_URL
         value: https://tic-tak-backend.onrender.com
       - key: VITE_LUDO_BACKEND_URL
-        value: https://ludo-backend-g2ir.onrender.com
+        value: https://ludo-backend-wykz.onrender.com

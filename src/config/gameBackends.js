@@ -30,7 +30,7 @@ export const GAME_BACKENDS = [
   {
     key: 'ludo',
     name: 'Ludo Backend',
-    url: import.meta.env.VITE_LUDO_BACKEND_URL || 'https://ludo-backend-g2ir.onrender.com',
+    url: import.meta.env.VITE_LUDO_BACKEND_URL || 'https://ludo-backend-wykz.onrender.com',
     healthPath: '/api/game',
     description: 'Ludo board-service backend for player and game operations.'
   }

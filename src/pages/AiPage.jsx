@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, PageHeader } from '../components/ui'
 import { useAuth } from '../context/AuthContext'
 import { getBackendByKey } from '../config/gameBackends'
@@ -336,6 +337,8 @@ function GameAiPanel({ tab, enabled, toggleLoading, onToggle }) {
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function AiPage() {
   const { token } = useAuth()
+  const { logout } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab]   = useState('dama')
 
   // Per-game enabled state — dama starts null (loading from API)
@@ -351,6 +354,11 @@ export default function AiPage() {
 
   const systemBackendUrl = getBackendByKey('system')?.url || 'https://system-backend-1u5m.onrender.com'
 
+  const handleUnauthorized = useCallback(() => {
+    logout()
+    navigate('/', { replace: true })
+  }, [logout, navigate])
+
   const fetchConfigs = useCallback(async () => {
     await Promise.all(['dama', 'xo', 'ludo'].map(async (gameKey) => {
       try {
@@ -362,6 +370,10 @@ export default function AiPage() {
             headers: { Authorization: `Bearer ${token}` },
           }
         )
+        if (res.status === 401) {
+          handleUnauthorized()
+          return
+        }
         if (!res.ok) return
         const json = await res.json()
         const cfg = json?.data ?? json
@@ -371,7 +383,7 @@ export default function AiPage() {
         setAiEnabled(prev => ({ ...prev, [gameKey]: false }))
       }
     }))
-  }, [token, systemBackendUrl])
+  }, [token, systemBackendUrl, handleUnauthorized])
 
   useEffect(() => { fetchConfigs() }, [fetchConfigs])
 
@@ -406,6 +418,10 @@ export default function AiPage() {
       )
 
       if (!res.ok) {
+        if (res.status === 401) {
+          handleUnauthorized()
+          return
+        }
         const errJson = await res.json().catch(() => ({}))
         throw new Error(errJson?.error || `HTTP ${res.status}`)
       }
